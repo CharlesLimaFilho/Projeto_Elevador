@@ -4,33 +4,35 @@
 
 // Programa que realiza a leitura da string de eventos
 
-typedef struct {
+typedef struct no{
     int andar;
     struct no *prox;
     struct no *ant;
 }no;
 
-void leitor(char *, no **);
+void leitor(char *, no **, no **);
 void createNo(no **noC, char *valor);
+int verificarDirecao(char *);
+void list(no *noLT);
 void finish(no **noF);
 
 int main() {
-    char teste[] = "AM_25 E1_04_S_6,9,8 E2_11_D_5,8,9,3,2,T E3_20_D_5,8,T,9";
+    char teste[] = "AM_25 E1_04_S_6,9,8 T5_P01_S_4_6";
     no *no1 = NULL;
     no *no2 = NULL;
 
-    leitor(teste, &no1);
-
+    leitor(teste, &no1, &no2);
     finish(&no1);
+    finish(&no2);
     return 0;
 }
 
-void leitor(char *_string, no **noL) {
+void leitor(char *_string, no **noL, no **noL2) {
     char *auxExterno;
     char *auxInterno;
     char *saveExterno = NULL;
     char *saveInterno = NULL;
-    int A;
+    int A, T, V;
 
     auxExterno = strtok_r(_string, " ", &saveExterno);
 
@@ -51,9 +53,10 @@ void leitor(char *_string, no **noL) {
 
             auxInterno = strtok_r(NULL, "_", &saveInterno);
 
-            if (!strcmp(auxInterno, "S")) {
+            V = verificarDirecao(auxInterno);
+            if (V == 1) {
                 printf("Subindo\n");
-            } else if (!strcmp(auxInterno, "D")) {
+            } else if (V == -1) {
                 printf("Descendo\n");
             } else {
                 printf("Erro: Direcao do elevador invalida\n\n");
@@ -66,6 +69,39 @@ void leitor(char *_string, no **noL) {
                 createNo(noL, auxInterno);
                 auxInterno = strtok_r(NULL, ",", &saveInterno);
             }
+            list(*noL);
+            printf("\n\n");
+
+        } else if (!strncmp(auxInterno, "T", 1) && *(auxInterno + 1) + 1) {
+            T = atoi(auxInterno + 1);
+            printf("No tempo %d:\n", T);
+
+            while (auxInterno) {
+                auxInterno = strtok_r(NULL, "_", &saveInterno);
+                if (!strncmp(auxInterno, "P", 1)) {
+                    A = atoi(auxInterno + 1);
+                    printf("Pessoa %d:\n", A);
+                    auxInterno = strtok_r(NULL, "_", &saveInterno);
+                }
+
+                V = verificarDirecao(auxInterno);
+                if (V == 1) {
+                    printf("Subindo\n");
+                } else if (V == -1) {
+                    printf("Descendo\n");
+                } else {
+                    printf("Erro: Direcao invalida\n\n");
+                    return;
+                }
+                auxInterno = strtok_r(NULL, "_", &saveInterno);
+
+                while (auxInterno) {
+                    createNo(noL2, auxInterno);
+                    auxInterno = strtok_r(NULL, ",", &saveInterno);
+                }
+                list(*noL2);
+                printf("\n\n");
+            }
         }
 
         auxExterno = strtok_r(NULL, " ", &saveExterno);
@@ -73,28 +109,60 @@ void leitor(char *_string, no **noL) {
 }
 
 void createNo(no **noC, char *valor) {
-    no *aux = malloc(sizeof(no));
-    aux->prox = NULL;
-    aux->ant = NULL;
-    aux->andar = atoi(valor);
+    no *novo = malloc(sizeof(no));
+    novo->prox = NULL;
+    novo->ant = NULL;
+    novo->andar = atoi(valor);
 
     if (!*noC) {
-        *noC = aux;
+        *noC = novo;
         return;
     } else {
         no *aux2 = *noC;
-        while (aux2->prox) {
-            aux2 = aux2->prox;
+        if (aux2->andar > novo->andar) {
+            novo->prox = aux2;
+            aux2->ant = novo;
+            *noC = novo;
+        } else {
+            while (aux2->prox && novo->andar > (aux2->prox)->andar && aux2->prox->andar != novo->andar) {
+                aux2 = aux2->prox;
+            }
+            if (aux2->andar == novo->andar || (aux2->prox && aux2->prox->andar == novo->andar)) {
+                free(novo);
+                return;
+            }
+            if (!aux2->prox) {
+                novo->ant = aux2;
+                aux2->prox = novo;
+            } else {
+                novo->prox = aux2->prox;
+                novo->ant = aux2;
+                (aux2->prox)->ant = novo;
+                aux2->prox = novo;
+            }
         }
-        aux2->prox = aux;
-        aux->ant = aux2;
     }
 }
 
 void list(no *noLT) {
+    printf("[ ");
     while (noLT) {
-        printf("%d", noLT->andar);
+        printf("%d ", noLT->andar);
+        if (noLT->prox) {
+            printf("-> ");
+        }
         noLT = noLT->prox;
+    }
+    printf("]");
+}
+
+int verificarDirecao(char *verif) {
+    if (!strcmp(verif, "S")) {
+        return 1;
+    } else if (!strcmp(verif, "D")) {
+        return -1;
+    } else {
+        return -2;
     }
 }
 
