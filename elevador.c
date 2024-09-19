@@ -60,6 +60,12 @@ typedef struct listaAndares{
 	struct listaAndares *endAnt;
 }listaAndares;
 
+typedef struct rota{
+	int tempo;
+	int nAndar;
+	struct rota *endprox;
+}rota;
+
 //Cronograma(Roteiro):
 typedef struct cronograma{
 	int tempo;
@@ -70,7 +76,9 @@ typedef struct cronograma{
 
 //Elevadores:
 typedef struct elevador{
+	int ID;
 	int direcao;// -1 - Descendo, 0 - Parado, 1 - Subindo
+	int andaresPercorridos;
 	listaPessoas *pessoasDentro;
 	andar *andarAtual;
 	listaAndares *chamados;
@@ -78,6 +86,7 @@ typedef struct elevador{
 	listaAndares *subindo;
 	listaAndares *descendo;
 	listaAndares *destino;//Vai apontar para os andares Destinos das pessoas dentro do elevador
+	rota *andaresPassados;
 }elevador;
 
 typedef struct listaElevadores{
@@ -94,20 +103,23 @@ void inserirPessoasAndares(cronograma **roteiro, andar **predio, int tempo, elev
 void chamarElevador(int andarAtual, int andarDestino, elevador *elevador);
 void separarChamadas(elevador *elevador, int andarDestino);
 void inicializarElevador(elevador *elevador, andar **predio, int direcao, listaAndares **chamados, int andarAtual);
+void inserirAndaresPassados(elevador *elev, int tempo);
 void inserirPessoasElevador(elevador *insElevador);
 void organizarDestino (elevador *elev);
 void ordemPessoasElevador(elevador *elev);
 void moverElevador(elevador *elev);
-void tirarPessoa(elevador *elev);
+void tirarPessoa(elevador *elev, int tempo);
 void definirSentido(elevador *elev);
-void atualizar(elevador *elev);
+void atualizar(elevador *elev, int tempo);
+void imprimirElevador(elevador *elev);
 //
 int main() {
 	andar *predio = NULL;
 	inicializar(&predio);
 	elevador elevador;
 	int tempo = 0;
-
+	int dtempo = 1;
+	int tAtual;
 	//teste:
 	
 	//Essas Pessoas seriam criadas na hora da leitura
@@ -181,21 +193,6 @@ int main() {
 	a3->endProx->endAnt = a3;
 	a3->endProx->endProx = NULL;
 
-	//O Cronograma junta as Listas de Pessoas em determinado tempo T e seu andares iniciais
-	cronograma *cronograma = malloc(sizeof(cronograma));;
-	cronograma->tempo = 1;
-	cronograma->pessoas = l1;
-	cronograma->andaresIniciais = a1;
-	cronograma->endProx = malloc(sizeof(cronograma));
-	cronograma->endProx->tempo = 5;
-	cronograma->endProx->pessoas = l2;
-	cronograma->endProx->andaresIniciais = a2;
-	cronograma->endProx->endProx = malloc(sizeof(cronograma));
-	cronograma->endProx->endProx->tempo = 9;
-	cronograma->endProx->endProx->pessoas = l3;
-	cronograma->endProx->endProx->andaresIniciais = a3;
-	cronograma->endProx->endProx->endProx = NULL;
-
 	//Exemplo de Lista de Andares que o Elevador l vai ter como Destino inicialmente
 	listaAndares *l = malloc(sizeof(listaAndares));
 	l->endAnt = NULL;
@@ -204,17 +201,48 @@ int main() {
 	l->endProx->n = 8;
 	l->endProx->endAnt = l;
 	l->endProx->endProx = malloc(sizeof(listaAndares));
-	l->endProx->endProx->n = 10;
+	l->endProx->endProx->n = 14;
 	l->endProx->endProx->endAnt = l->endProx;
 	l->endProx->endProx->endProx = NULL;
+	
+	
+	//O Cronograma junta as Listas de Pessoas em determinado tempo T e seu andares iniciais
+	cronograma *roteiro = malloc(sizeof(cronograma));
+	roteiro->tempo = 4;
+	roteiro->pessoas = l1;
+	roteiro->andaresIniciais = a1;
+	roteiro->endProx = malloc(sizeof(cronograma));
+	roteiro->endProx->tempo = 8;
+	roteiro->endProx->pessoas = l2;
+	roteiro->endProx->andaresIniciais = a2;
+	roteiro->endProx->endProx = malloc(sizeof(cronograma));
+	roteiro->endProx->endProx->tempo = 9;
+	roteiro->endProx->endProx->pessoas = l3;
+	roteiro->endProx->endProx->andaresIniciais = a3;
+	roteiro->endProx->endProx->endProx = NULL;
 
 	inicializarElevador(&elevador,&predio,1,&l,1);
-	while(tempo <= 45){
-		inserirPessoasAndares(&cronograma,&predio,tempo,&elevador);
-		atualizar(&elevador);
+	
+	while(roteiro != NULL || elevador.direcao != 0 ){
+		tAtual = clock()/CLOCKS_PER_SEC;
+		if(tAtual - tempo >= dtempo){
+			inserirPessoasAndares(&roteiro,&predio,tAtual,&elevador);
+			atualizar(&elevador, tAtual);
+			tempo = tempo + 1;
+		}
+	}
+	
+	/*
+	
+	while(tempo <= 50){
+		inserirPessoasAndares(&roteiro,&predio,tempo,&elevador);
+		atualizar(&elevador,tempo);
 		tempo++;
 	}
-	// Ver como ficar lógica de atualização
+	*/
+
+	
+	
 	return 0;
 }
 
@@ -286,7 +314,7 @@ void inserirPessoasAndares(cronograma **roteiro, andar **predio, int tempo, elev
 				free(aux3);
 			}
 		//Não faço menor ideia do porquê não funcionar, se conseguir ajeitar, vá em frente:
-		auxCronograma->tempo = NULL;
+		auxCronograma->tempo = 0;
 		*roteiro = auxCronograma->endProx;
 		}	
 	}
@@ -371,19 +399,21 @@ void separarChamadas(elevador *elevador, int andarDestino){
 						break;
 					}
 				}
-				//inserir no Inicio:
-				if(aux == elevador->reserva){
-					elevador->reserva = elevador->chamados;
-					elevador->chamados = NULL;
-					elevador->reserva->endProx = aux;
-					aux->endAnt = elevador->reserva;
-				}//inserir no Final:
-				else if(aux->endProx == NULL){
+				//inserir no Final:
+				if(aux->endProx == NULL && elevador->chamados->n >= aux->n){
 					aux->endProx = elevador->chamados;
 					elevador->chamados = NULL;
 					aux->endProx->endAnt = aux;
 					aux->endProx->endProx = NULL;
-				}//inserir no meio:
+				}
+				//inserir no Inicio:
+				else if(aux == elevador->reserva){
+					elevador->reserva = elevador->chamados;
+					elevador->chamados = NULL;
+					elevador->reserva->endProx = aux;
+					aux->endAnt = elevador->reserva;
+				}
+				//inserir no meio:
 				else{
 					listaAndares *aux2 = aux->endAnt;
 					aux2->endProx = elevador->chamados;
@@ -398,7 +428,7 @@ void separarChamadas(elevador *elevador, int andarDestino){
 	}//Descendo:
 	else{
 		//Entrar na Fila Descendo Padrão:
-		if(elevador->chamados->n <= elevador->andarAtual->nAndar || elevador->direcao == 1){//Se estiver abaixo do elevador ou quando elevador estiver SUBINDO
+		if(elevador->chamados->n <= elevador->andarAtual->nAndar || elevador->direcao == 1){//Se estiver abaixo do elevador ou quando elevador estiver DESCENDO
 			if(elevador->descendo == NULL){
 				listaAndares *aux;
 				aux = elevador->chamados;
@@ -415,7 +445,7 @@ void separarChamadas(elevador *elevador, int andarDestino){
 					}
 				}
 				//inserir no início:
-				if(aux == elevador->descendo){
+				if(aux == elevador->descendo && elevador->chamados->n >= aux->n){
 					elevador->descendo = elevador->chamados;
 					elevador->chamados = NULL;
 					elevador->descendo->endProx = aux;
@@ -453,18 +483,19 @@ void separarChamadas(elevador *elevador, int andarDestino){
 						break;
 					}
 				}
-				//inserir no início:
-				if(aux == elevador->reserva){
-					elevador->reserva = elevador->chamados;
-					elevador->chamados = NULL;
-					elevador->reserva->endProx = aux;
-					aux->endAnt = elevador->reserva;
-				}//inserir no final:
-				else if(aux->endProx == NULL && elevador->chamados->n <= aux->n){
+				
+				//inserir no final:
+				if(aux->endProx == NULL && elevador->chamados->n <= aux->n){
 					aux->endProx = elevador->chamados;
 					elevador->chamados = NULL;
 					aux->endProx->endAnt = aux;
 					aux->endProx->endProx = NULL;
+				}//inserir no início:
+				else if(aux == elevador->reserva && elevador->chamados->n >= elevador->reserva->n){
+					elevador->reserva = elevador->chamados;
+					elevador->chamados = NULL;
+					elevador->reserva->endProx = aux;
+					aux->endAnt = elevador->reserva;
 				}//inserir no meio:
 				else{
 					listaAndares *aux2 = aux->endAnt;
@@ -493,6 +524,32 @@ void inicializarElevador(elevador *elevador, andar **predio, int direcao, listaA
 	elevador->chamados = NULL;
 	elevador->reserva = NULL;
 	elevador->pessoasDentro = NULL;
+	elevador->andaresPassados = NULL;
+	elevador->andaresPercorridos = 0;
+	elevador->ID = 1;
+	return;
+}
+
+void inserirAndaresPassados(elevador *elev, int tempo){
+	elevador *auxElevador = elev;
+	rota *aux = elev->andaresPassados;
+	if(aux == NULL){
+		rota *aux2 = malloc(sizeof(rota));
+		aux2->tempo = tempo;
+		aux2->nAndar = auxElevador->andarAtual->nAndar;
+		aux2->endprox = NULL;
+		elev->andaresPassados = aux2;
+	}else{
+		rota *aux3 = aux;
+		while(aux3->endprox != NULL){
+			aux3 = aux3->endprox;
+		}
+		rota *aux2 = malloc(sizeof(rota));
+		aux2->tempo = tempo;
+		aux2->endprox = NULL;
+		aux2->nAndar = auxElevador->andarAtual->nAndar;
+		aux3->endprox = aux2;
+	}
 	return;
 }
 
@@ -500,12 +557,14 @@ void inserirPessoasElevador(elevador *insElevador){
 	//Subindo
 	if(insElevador->direcao == 1){
 		listaAndares *aux = insElevador->subindo;
-		listaAndares *aux3 = insElevador->subindo;
+		listaAndares *listaSubindo = insElevador->subindo;
 		
 		while(aux != NULL && aux->n == insElevador->andarAtual->nAndar){
 			while(aux->n != insElevador->andarAtual->nAndar && aux != NULL){
 				aux = aux->endProx;
 			}if(aux != NULL){
+				//Inserir o andar atual na rota dos andares passados do elevador
+
 				//Retirar esse andar na lista de subida, adicionar essa pessoa na Lista das Pessoas Dentro, adicionar o Andar Desino na Lista Destino e retirar essa Pessoa do andar:
 				//(1) Retirar esse andar:
 				//a)Primeiro elemento
@@ -513,131 +572,134 @@ void inserirPessoasElevador(elevador *insElevador){
 					insElevador->subindo = aux->endProx;
 					aux->endProx->endAnt = NULL;
 					free(aux);
-					aux3 = insElevador->subindo;
+					listaSubindo = insElevador->subindo;
 				}
 				//b)Único elemento
 				else if(aux->endAnt == NULL && aux == insElevador->subindo){
 					insElevador->subindo = NULL;
 					free(aux);
-					aux3 = insElevador->subindo;
+					listaSubindo = insElevador->subindo;
 				}//c)Último elemento
 				else if(aux->endProx == NULL && aux->endAnt != NULL){
 					aux->endAnt = NULL;
 					free(aux);
-					aux3 = insElevador->subindo;
+					listaSubindo = insElevador->subindo;
 				}//d)Elemento no meio
 				else{
 					listaAndares *aux2 = aux->endProx;
 					aux2->endAnt = aux->endAnt;
 					aux->endAnt->endProx = aux2;
 					free(aux);
-					aux3 = insElevador->subindo;
+					listaSubindo = insElevador->subindo;
 				}
 				//(2) Adicionar essa Pessoa na Lista das Pessoas Dentro
 				//a) Olhar pras Pessoas do Andar e ver quem quer subir e depois adicionar na lista de Pessoas Dentro
-				andar *auxA = insElevador->andarAtual;
-				listaPessoas *auxIni = insElevador->andarAtual->pessoas;//Salvar o endereço inicial da lista 
-				while(auxA->pessoas != NULL && auxA->pessoas->pessoa.andarD < insElevador->andarAtual->nAndar){
-					auxA->pessoas = auxA->pessoas->endProx;
+				andar *andarAtual = insElevador->andarAtual;
+				listaPessoas *pessoasInicial = insElevador->andarAtual->pessoas;//Salvar o endereço inicial da lista 
+				while(andarAtual->pessoas != NULL && andarAtual->pessoas->pessoa.andarD < insElevador->andarAtual->nAndar){
+					andarAtual->pessoas = andarAtual->pessoas->endProx;
 				}
-				if(auxA != NULL){//Achou alguém
+				if(andarAtual != NULL){//Achou alguém
 					//b) Vamos retirar essa Pessoa da lista do andar e Adicionar ela na Lista de Dentro
 					//Verificar se a lista de Pessoas Dentro está vazia:
 					
 					//Único elemento
-					if(auxA->pessoas->endAnt == NULL && auxA->pessoas->endProx == NULL && auxA->pessoas == insElevador->andarAtual->pessoas){
+					if(andarAtual->pessoas->endAnt == NULL && andarAtual->pessoas->endProx == NULL && andarAtual->pessoas == insElevador->andarAtual->pessoas){
 						if(insElevador->pessoasDentro == NULL){
-							insElevador->pessoasDentro = auxA->pessoas;
+							insElevador->pessoasDentro = andarAtual->pessoas;
 							insElevador->andarAtual->pessoas = NULL;
 						}else{
-							insElevador->pessoasDentro->endAnt = auxA->pessoas;
-							auxA->pessoas->endProx = insElevador->pessoasDentro;
-							insElevador->pessoasDentro = auxA->pessoas;
+							insElevador->pessoasDentro->endAnt = andarAtual->pessoas;
+							andarAtual->pessoas->endProx = insElevador->pessoasDentro;
+							insElevador->pessoasDentro = andarAtual->pessoas;
 							insElevador->andarAtual->pessoas = NULL;
 							insElevador->pessoasDentro->endAnt = NULL;
 						}
 					}//Primeiro elemento
-					else if(auxA->pessoas->endAnt == NULL){
+					else if(andarAtual->pessoas->endAnt == NULL){
 						if(insElevador->pessoasDentro == NULL){
-							listaPessoas *aux5 = auxA->pessoas;//Copiado para destino
-							auxA->pessoas->endProx->endAnt = NULL;
-							auxA->pessoas = auxA->pessoas->endProx;
-							insElevador->pessoasDentro = aux5;
-							aux5->endProx = NULL;
-							aux5->endProx = NULL;
+							listaPessoas *pessoa = andarAtual->pessoas;//Copiado para destino
+							andarAtual->pessoas->endProx->endAnt = NULL;
+							andarAtual->pessoas = andarAtual->pessoas->endProx;
+							insElevador->pessoasDentro = pessoa;
+							pessoa->endProx = NULL;
+							pessoa->endProx = NULL;
 						}else{
-							listaPessoas *aux5 = auxA->pessoas;
-							auxA->pessoas->endProx->endAnt = NULL;
-							auxA->pessoas = auxA->pessoas->endProx;
-							aux5->endProx = insElevador->pessoasDentro;
-							aux5->endAnt = NULL;
-							insElevador->pessoasDentro->endAnt = aux5;
-							insElevador->pessoasDentro = aux5;
+							listaPessoas *pessoa = andarAtual->pessoas;
+							andarAtual->pessoas->endProx->endAnt = NULL;
+							andarAtual->pessoas = andarAtual->pessoas->endProx;
+							pessoa->endProx = insElevador->pessoasDentro;
+							pessoa->endAnt = NULL;
+							insElevador->pessoasDentro->endAnt = pessoa;
+							insElevador->pessoasDentro = pessoa;
 						}
 						
 					}//Último elemento
-					else if(auxA->pessoas->endProx == NULL){
+					else if(andarAtual->pessoas->endProx == NULL){
 						if(insElevador->pessoasDentro == NULL){
-							listaPessoas *aux5 = auxA->pessoas;
-							auxA->pessoas->endAnt->endProx = NULL;
-							auxA->pessoas->endAnt = NULL;
-							auxA->pessoas->endProx = NULL;
-							aux5->endAnt = NULL;
-							aux5->endProx = insElevador->pessoasDentro;
-							insElevador->pessoasDentro->endAnt = aux5;
-							insElevador->pessoasDentro = aux5;
-							insElevador->andarAtual->pessoas = auxIni;
+							listaPessoas *pessoa = andarAtual->pessoas;
+							andarAtual->pessoas->endAnt->endProx = NULL;
+							andarAtual->pessoas->endAnt = NULL;
+							andarAtual->pessoas->endProx = NULL;
+							pessoa->endAnt = NULL;
+							pessoa->endProx = insElevador->pessoasDentro;
+							insElevador->pessoasDentro->endAnt = pessoa;
+							insElevador->pessoasDentro = pessoa;
+							insElevador->andarAtual->pessoas = pessoasInicial;
 						}else{
-							listaPessoas *aux5 = auxA->pessoas;
-							auxA->pessoas->endAnt->endProx = NULL;
-							auxA->pessoas->endAnt = NULL;
-							auxA->pessoas->endProx = NULL;
-							aux5->endProx = insElevador->pessoasDentro;
-							insElevador->pessoasDentro->endAnt = aux5;
-							aux5->endAnt = NULL;
-							insElevador->pessoasDentro = aux5;
-							insElevador->andarAtual->pessoas = auxIni;
+							listaPessoas *pessoa = andarAtual->pessoas;
+							andarAtual->pessoas->endAnt->endProx = NULL;
+							andarAtual->pessoas->endAnt = NULL;
+							andarAtual->pessoas->endProx = NULL;
+							pessoa->endProx = insElevador->pessoasDentro;
+							insElevador->pessoasDentro->endAnt = pessoa;
+							pessoa->endAnt = NULL;
+							insElevador->pessoasDentro = pessoa;
+							insElevador->andarAtual->pessoas = pessoasInicial;
 						}
 					}//No meio
 					else{
 						if(insElevador->pessoasDentro == NULL){
-							listaPessoas *aux5 = auxA->pessoas;
-							auxA->pessoas->endAnt->endProx = auxA->pessoas->endProx;
-							auxA->pessoas->endProx->endAnt = auxA->pessoas->endAnt;
-							auxA->pessoas->endProx = NULL;
-							auxA->pessoas->endAnt = NULL;
-							insElevador->pessoasDentro = aux5;
-							insElevador->andarAtual->pessoas = auxIni;
+							listaPessoas *pessoa = andarAtual->pessoas;
+							andarAtual->pessoas->endAnt->endProx = andarAtual->pessoas->endProx;
+							andarAtual->pessoas->endProx->endAnt = andarAtual->pessoas->endAnt;
+							andarAtual->pessoas->endProx = NULL;
+							andarAtual->pessoas->endAnt = NULL;
+							insElevador->pessoasDentro = pessoa;
+							insElevador->andarAtual->pessoas = pessoasInicial;
 						}
 						else{
-							listaPessoas *aux5 = auxA->pessoas;
-							auxA->pessoas->endAnt->endProx = auxA->pessoas->endProx;
-							auxA->pessoas->endProx->endAnt = auxA->pessoas->endAnt;
-							auxA->pessoas->endProx = NULL;
-							auxA->pessoas->endAnt = NULL;
-							aux5->endProx = insElevador->pessoasDentro;
-							insElevador->pessoasDentro->endAnt = aux5;
-							insElevador->pessoasDentro = aux5;
-							insElevador->andarAtual->pessoas = auxIni;
+							listaPessoas *pessoa = andarAtual->pessoas;
+							andarAtual->pessoas->endAnt->endProx = andarAtual->pessoas->endProx;
+							andarAtual->pessoas->endProx->endAnt = andarAtual->pessoas->endAnt;
+							andarAtual->pessoas->endProx = NULL;
+							andarAtual->pessoas->endAnt = NULL;
+							pessoa->endProx = insElevador->pessoasDentro;
+							insElevador->pessoasDentro->endAnt = pessoa;
+							insElevador->pessoasDentro = pessoa;
+							insElevador->andarAtual->pessoas = pessoasInicial;
 						}
 						
 					}
 				}
 			}
-			aux = aux3;
+			aux = listaSubindo;
 			ordemPessoasElevador(insElevador);
 			organizarDestino(insElevador);
 		}
 	}//Descendo
 	else if(insElevador->direcao == -1){
 		listaAndares *aux = insElevador->descendo;
-		listaAndares *aux3 = insElevador->descendo;
+		listaAndares *listaDescendo = insElevador->descendo;
 		
 		
 		while(aux != NULL && aux->n == insElevador->andarAtual->nAndar){
 			while(aux->n != insElevador->andarAtual->nAndar && aux != NULL){
 				aux = aux->endProx;
 			}if(aux != NULL){
+				//Inserir na rota de Andares Passados do elevador
+				
+				
 				//Retirar esse andar na lista de Descida, adicionar essa pessoa na Lista das Pessoas Dentro, adicionar o Andar Desino na Lista Destino e retirar essa Pessoa do andar:
 				//(1) Retirar esse andar:
 				//a)Primeiro elemento
@@ -645,117 +707,117 @@ void inserirPessoasElevador(elevador *insElevador){
 					insElevador->descendo = aux->endProx;
 					aux->endProx->endAnt = NULL;
 					free(aux);
-					aux3 = insElevador->descendo;
+					listaDescendo = insElevador->descendo;
 				}
 				//b)Único elemento
 				else if(aux->endAnt == NULL && aux == insElevador->descendo){
 					insElevador->descendo = NULL;
 					free(aux);
-					aux3 = insElevador->descendo;
+					listaDescendo = insElevador->descendo;
 				}//c)Último elemento
 				else if(aux->endProx == NULL && aux->endAnt != NULL){
 					aux->endAnt = NULL;
 					free(aux);
-					aux3 = insElevador->descendo;
+					listaDescendo = insElevador->descendo;
 				}//d)Elemento no meio
 				else{
 					listaAndares *aux2 = aux->endProx;
 					aux2->endAnt = aux->endAnt;
 					aux->endAnt->endProx = aux2;
 					free(aux);
-					aux3 = insElevador->descendo;
+					listaDescendo = insElevador->descendo;
 				}
 				//(2) Adicionar essa Pessoa na Lista das Pessoas Dentro
-				//a) Olhar pras Pessoas do Andar e ver quem quer subir e depois adicionar na lista de Pessoas Dentro
-				andar *auxA = insElevador->andarAtual;
-				listaPessoas *auxIni = insElevador->andarAtual->pessoas;//Salvar o endereço inicial da lista 
-				while(auxA->pessoas != NULL && auxA->pessoas->pessoa.andarD > insElevador->andarAtual->nAndar){
-					auxA->pessoas = auxA->pessoas->endProx;
+				//a) Olhar pras Pessoas do Andar e ver quem quer descer e depois adicionar na lista de Pessoas Dentro
+				andar *andarAtual = insElevador->andarAtual;
+				listaPessoas *pessoasInicial = insElevador->andarAtual->pessoas;//Salvar o endereço inicial da lista 
+				while(andarAtual->pessoas != NULL && andarAtual->pessoas->pessoa.andarD > insElevador->andarAtual->nAndar){
+					andarAtual->pessoas = andarAtual->pessoas->endProx;
 				}
-				if(auxA != NULL){//Achou alguém
+				if(andarAtual != NULL){//Achou alguém
 					//b) Vamos retirar essa Pessoa da lista do andar e Adicionar ela na Lista de Dentro
 					//Verificar se a lista de Pessoas Dentro está vazia:
 					
 					//Único elemento
-					if(auxA->pessoas->endAnt == NULL && auxA->pessoas->endProx == NULL && auxA->pessoas == insElevador->andarAtual->pessoas){
+					if(andarAtual->pessoas->endAnt == NULL && andarAtual->pessoas->endProx == NULL && andarAtual->pessoas == insElevador->andarAtual->pessoas){
 						if(insElevador->pessoasDentro == NULL){
-							insElevador->pessoasDentro = auxA->pessoas;
+							insElevador->pessoasDentro = andarAtual->pessoas;
 							insElevador->andarAtual->pessoas = NULL;
 						}else{
-							insElevador->pessoasDentro->endAnt = auxA->pessoas;
-							auxA->pessoas->endProx = insElevador->pessoasDentro;
-							insElevador->pessoasDentro = auxA->pessoas;
+							insElevador->pessoasDentro->endAnt = andarAtual->pessoas;
+							andarAtual->pessoas->endProx = insElevador->pessoasDentro;
+							insElevador->pessoasDentro = andarAtual->pessoas;
 							insElevador->andarAtual->pessoas = NULL;
 							insElevador->pessoasDentro->endAnt = NULL;
 						}
 					}//Primeiro elemento
-					else if(auxA->pessoas->endAnt == NULL){
+					else if(andarAtual->pessoas->endAnt == NULL){
 						if(insElevador->pessoasDentro == NULL){
-							listaPessoas *aux5 = auxA->pessoas;//Copiado para destino
-							auxA->pessoas->endProx->endAnt = NULL;
-							auxA->pessoas = auxA->pessoas->endProx;
-							insElevador->pessoasDentro = aux5;
-							aux5->endProx = NULL;
+							listaPessoas *pessoa = andarAtual->pessoas;//Copiado para destino
+							andarAtual->pessoas->endProx->endAnt = NULL;
+							andarAtual->pessoas = andarAtual->pessoas->endProx;
+							insElevador->pessoasDentro = pessoa;
+							pessoa->endProx = NULL;
 						}else{
-							listaPessoas *aux5 = auxA->pessoas;
-							auxA->pessoas->endProx->endAnt = NULL;
-							auxA->pessoas = auxA->pessoas->endProx;
-							aux5->endProx = insElevador->pessoasDentro;
-							aux5->endAnt = NULL;
-							insElevador->pessoasDentro->endAnt = aux5;
-							insElevador->pessoasDentro = aux5;
+							listaPessoas *pessoa = andarAtual->pessoas;
+							andarAtual->pessoas->endProx->endAnt = NULL;
+							andarAtual->pessoas = andarAtual->pessoas->endProx;
+							pessoa->endProx = insElevador->pessoasDentro;
+							pessoa->endAnt = NULL;
+							insElevador->pessoasDentro->endAnt = pessoa;
+							insElevador->pessoasDentro = pessoa;
 						}
 						
 					}//Último elemento
-					else if(auxA->pessoas->endProx == NULL){
+					else if(andarAtual->pessoas->endProx == NULL){
 						if(insElevador->pessoasDentro == NULL){
-							listaPessoas *aux5 = auxA->pessoas;
-							auxA->pessoas->endAnt->endProx = NULL;
-							auxA->pessoas->endAnt = NULL;
-							auxA->pessoas->endProx = NULL;
-							aux5->endAnt = NULL;
-							aux5->endProx = insElevador->pessoasDentro;
-							insElevador->pessoasDentro->endAnt = aux5;
-							insElevador->pessoasDentro = aux5;
-							insElevador->andarAtual->pessoas = auxIni;
+							listaPessoas *pessoa = andarAtual->pessoas;
+							andarAtual->pessoas->endAnt->endProx = NULL;
+							andarAtual->pessoas->endAnt = NULL;
+							andarAtual->pessoas->endProx = NULL;
+							pessoa->endAnt = NULL;
+							pessoa->endProx = insElevador->pessoasDentro;
+							insElevador->pessoasDentro->endAnt = pessoa;
+							insElevador->pessoasDentro = pessoa;
+							insElevador->andarAtual->pessoas = pessoasInicial;
 						}else{
-							listaPessoas *aux5 = auxA->pessoas;
-							auxA->pessoas->endAnt->endProx = NULL;
-							auxA->pessoas->endAnt = NULL;
-							auxA->pessoas->endProx = NULL;
-							aux5->endProx = insElevador->pessoasDentro;
-							insElevador->pessoasDentro->endAnt = aux5;
-							aux5->endAnt = NULL;
-							insElevador->pessoasDentro = aux5;
-							insElevador->andarAtual->pessoas = auxIni;
+							listaPessoas *pessoa = andarAtual->pessoas;
+							andarAtual->pessoas->endAnt->endProx = NULL;
+							andarAtual->pessoas->endAnt = NULL;
+							andarAtual->pessoas->endProx = NULL;
+							pessoa->endProx = insElevador->pessoasDentro;
+							insElevador->pessoasDentro->endAnt = pessoa;
+							pessoa->endAnt = NULL;
+							insElevador->pessoasDentro = pessoa;
+							insElevador->andarAtual->pessoas = pessoasInicial;
 						}
 					}//No meio
 					else{
 						if(insElevador->pessoasDentro == NULL){
-							listaPessoas *aux5 = auxA->pessoas;
-							auxA->pessoas->endAnt->endProx = auxA->pessoas->endProx;
-							auxA->pessoas->endProx->endAnt = auxA->pessoas->endAnt;
-							auxA->pessoas->endProx = NULL;
-							auxA->pessoas->endAnt = NULL;
-							insElevador->pessoasDentro = aux5;
-							insElevador->andarAtual->pessoas = auxIni;
+							listaPessoas *pessoa = andarAtual->pessoas;
+							andarAtual->pessoas->endAnt->endProx = andarAtual->pessoas->endProx;
+							andarAtual->pessoas->endProx->endAnt = andarAtual->pessoas->endAnt;
+							andarAtual->pessoas->endProx = NULL;
+							andarAtual->pessoas->endAnt = NULL;
+							insElevador->pessoasDentro = pessoa;
+							insElevador->andarAtual->pessoas = pessoasInicial;
 						}
 						else{
-							listaPessoas *aux5 = auxA->pessoas;
-							auxA->pessoas->endAnt->endProx = auxA->pessoas->endProx;
-							auxA->pessoas->endProx->endAnt = auxA->pessoas->endAnt;
-							auxA->pessoas->endProx = NULL;
-							auxA->pessoas->endAnt = NULL;
-							aux5->endProx = insElevador->pessoasDentro;
-							insElevador->pessoasDentro->endAnt = aux5;
-							insElevador->pessoasDentro = aux5;
-							insElevador->andarAtual->pessoas = auxIni;
+							listaPessoas *pessoa = andarAtual->pessoas;
+							andarAtual->pessoas->endAnt->endProx = andarAtual->pessoas->endProx;
+							andarAtual->pessoas->endProx->endAnt = andarAtual->pessoas->endAnt;
+							andarAtual->pessoas->endProx = NULL;
+							andarAtual->pessoas->endAnt = NULL;
+							pessoa->endProx = insElevador->pessoasDentro;
+							insElevador->pessoasDentro->endAnt = pessoa;
+							insElevador->pessoasDentro = pessoa;
+							insElevador->andarAtual->pessoas = pessoasInicial;
 						}
 						
 					}
 				}
 			}
-			aux = aux3;
+			aux = listaDescendo;
 			organizarDestino(insElevador);
 			ordemPessoasElevador(insElevador);
 		}
@@ -858,6 +920,7 @@ void ordemPessoasElevador(elevador *elev){
 			}
 			return;
 		}
+		return;
 	}
 }
 
@@ -950,26 +1013,30 @@ void moverElevador(elevador *elev){
 	// Subir
 	if(elev->direcao == 1 && elev->andarAtual->prox != NULL){
 		elev->andarAtual = elev->andarAtual->prox;
+		elev->andaresPercorridos++;
 	}// Descer
 	else if(elev->direcao == -1 && elev->andarAtual->ant != NULL){
 		elev->andarAtual = elev->andarAtual->ant;
+		elev->andaresPercorridos++;
 	}
 	return;
 }
 
-void tirarPessoa(elevador *elev){
+void tirarPessoa(elevador *elev, int tempo){
 	elevador *aux = elev;
 	if(aux->destino != NULL && aux->andarAtual->nAndar == aux->destino->n){
-		listaAndares *auxA = aux->destino;
+
+		listaAndares *auxAndar = aux->destino;
 		listaPessoas *auxP = aux->pessoasDentro;
-		while(auxA == aux->destino){
-			auxA = aux->destino;
+		while(aux->destino != NULL && aux->andarAtual->nAndar == aux->destino->n){
+			inserirAndaresPassados(elev, tempo);
+			auxAndar = aux->destino;
 			auxP = aux->pessoasDentro;
-			aux->destino = auxA->endProx;
-			if(auxA->endProx != NULL){
-				auxA->endProx->endAnt = NULL;	
+			aux->destino = auxAndar->endProx;
+			if(auxAndar->endProx != NULL){
+				auxAndar->endProx->endAnt = NULL;	
 			}
-			free(auxA);
+			free(auxAndar);
 			if(auxP != NULL && auxP->pessoa.andarD == aux->andarAtual->nAndar){
 				aux->pessoasDentro = auxP->endProx;
 				if(auxP->endProx != NULL){
@@ -988,13 +1055,20 @@ void definirSentido(elevador *elev){
 		//Se o elevador estiver subindo, mas tiver que mudar de sentido
 		if((aux->direcao == 1 && aux->subindo == NULL && aux->descendo != NULL && aux->andarAtual->nAndar == aux->descendo->n) || (aux->direcao == 1 && aux->subindo != NULL && aux->descendo != NULL && aux->descendo->n > aux->subindo->n && aux->andarAtual->nAndar == aux->descendo->n)){
 			aux->direcao = -1;
+			if(aux->reserva != NULL){
+				aux->subindo = aux->reserva;
+				aux->reserva = NULL;
+			}
 		}
 		//Se o elevador estiver descendo, mas tiver que mudar de sentido
 		else if((aux->direcao == -1 && aux->descendo == NULL && aux->subindo != NULL && aux->andarAtual->nAndar == aux->subindo->n) || (aux->direcao == -1 && aux->descendo != NULL && aux->subindo != NULL && aux->descendo->n > aux->subindo->n && aux->andarAtual->nAndar == aux->subindo->n)){
 			aux->direcao = 1;
+			if(aux->reserva != NULL){
+				aux->descendo = aux->reserva;
+				aux->reserva = NULL;
+			}
 		}
 		
-
 		//Se já estivesse subindo
 		if(aux->direcao == 1 && aux->subindo == NULL){
 			if(aux->descendo != NULL){
@@ -1036,14 +1110,28 @@ void definirSentido(elevador *elev){
 	return;
 }
 
-void atualizar(elevador *elev){
-	tirarPessoa(elev);
+void atualizar(elevador *elev, int tempo){
+	tirarPessoa(elev,tempo);
 	definirSentido(elev);
 	inserirPessoasElevador(elev);
+	imprimirElevador(elev);
 	moverElevador(elev);
 	return;
 }
 
+void imprimirElevador(elevador *elev){
+	elevador *aux = elev;
+	if(aux->andaresPassados != NULL){
+		printf("\nElevador %d :\n %d(%d)",aux->ID,aux->andaresPassados->nAndar,aux->andaresPassados->tempo);
+		rota *aux2 = aux->andaresPassados->endprox;
+		while(aux2 != NULL){
+			printf(" -> %d(%d)",aux2->nAndar,aux2->tempo);
+			aux2 = aux2->endprox;
+		}
+		printf("\nO elevador percorreu : %d andares.\n",aux->andaresPercorridos);
+	}
+	return;
+}
 /*COMO SERIA O LOOP DO PROGRAMA:
 int tempo = 0;
 	int dtempo = 2;
