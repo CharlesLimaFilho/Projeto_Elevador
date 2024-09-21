@@ -24,10 +24,12 @@ typedef struct andar{
 
 typedef struct elevador{
     int direcao;// -1 - Descendo, 0 - Parado, 1 - Subindo
+    int id;
     pessoa *pessoasDentro;
     andar *andarAtual;
     andar *andaresDestino;
     andar *andaresChamado;
+    struct elevador *prox;
 }elevador;
 
 typedef struct eventos {
@@ -38,8 +40,11 @@ typedef struct eventos {
 } gerenciador;
 
 
-void leitor(char *, andar **, no **);
+void leitor(char *_string, andar **andares, elevador **elevadores, gerenciador **ge);
 void createEventos(gerenciador **gerente, int tempo, pessoa *pessoaG, int andarG);
+void createAndar(andar **andares, int numAndar, int condicao);
+pessoa *createPessoa(int id, char *a, int direcao);
+void createElevador(elevador **elevadores, int id, int direcao, andar *andaresElevador);
 void createNo(no **noC, char *valor);
 int verificarDirecao(char *);
 void list(no *noLT);

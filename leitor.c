@@ -15,41 +15,37 @@
 
 
 
-typedef struct no{
-    int andar;
-    struct no *prox;
-    struct no *ant;
-} no;
-
-typedef struct pessoa{
+typedef struct pessoa1{
     int id;
     int andarD;
     int direcao;
-    struct pessoa *prox;
-    struct pessoa *ant;
+    struct pessoa1 *prox;
+    struct pessoa1 *ant;
 }pessoa;
 
-typedef struct andar{
+typedef struct andar1{
     int andar;
-    struct andar *prox;
-    struct andar *ant;
+    struct andar1 *prox;
+    struct andar1 *ant;
     pessoa *pessoa;
 }andar;
 
 
-typedef struct elevador{
+typedef struct elevador1{
     int direcao;// -1 - Descendo, 0 - Parado, 1 - Subindo
+    int id;
     pessoa *pessoasDentro;
     andar *andarAtual;
     andar *andaresDestino;
     andar *andaresChamado;
+    struct elevador1 *prox;
 }elevador;
 
-typedef struct eventos {
+typedef struct eventos1 {
     int tempo;
     int andar;
     pessoa *pessoa;
-    struct eventos *prox;
+    struct eventos1 *prox;
 } gerenciador;
 
 
@@ -57,31 +53,19 @@ typedef struct eventos {
 void leitor(char *, andar **, elevador **, gerenciador **ge);
 void createEventos(gerenciador **gerente, int tempo, pessoa *pessoaG, int andarG);
 void gerenciadorEventos();
-void createNo(no **noC, char *valor);
 pessoa *createPessoa(int id, char *a, int direcao);
-void createAndar(andar **andares, int numAndar);
-elevador *createElevador();
+void createAndar(andar **andares, int numAndar, int condicao);
+void createElevador(elevador **elevadores, int id, int direcao, andar *andaresElevador);
 int verificarDirecao(char *);
-void list(no *noLT);
-void finish(no **noF);
+void inserirElevadorAndar(elevador *elevadorP, andar *andares, int andar, int id);
 
-//int main() {
-//    char teste[] = "AM_25 E1_04_S_6,9,8 T5_P01_S_4_6";
-//    no *no1 = NULL;
-//    no *no2 = NULL;
-//
-//    leitor(teste, &no1, &no2);
-//    finish(&no1);
-//    finish(&no2);
-//    return 0;
-//}
 
 void leitor(char *_string, andar **andares, elevador **elevadores, gerenciador **ge) {
     char *auxExterno;
     char *auxInterno;
     char *saveExterno = NULL;
     char *saveInterno = NULL;
-    int A, T, V;
+    int A, T, V, elevadorID, elevadorAndar;
 
     auxExterno = strtok_r(_string, " ", &saveExterno);
 
@@ -91,16 +75,22 @@ void leitor(char *_string, andar **andares, elevador **elevadores, gerenciador *
         if (!strcmp(auxInterno, "AM")) {
             auxInterno = strtok_r(NULL, " ", &saveInterno);
             A = atoi(auxInterno);
+
+            if (A > 25 || A < 5) {
+                printf("Quantidade de andares deve ser no minimo 5 e no maximo 25!");
+                return;
+            }
+
             for (int i = 1; i <= A; i++) {
-                createAndar(andares, i);
+                createAndar(andares, i, 1);
             }
         } else if (!strncmp(auxInterno, "E", 1)) {
-            A = atoi(auxInterno + 1);
-            printf("Elevador: %d\n", A); // Printa qual elevador
+            elevadorID = atoi(auxInterno + 1);
+            printf("Elevador: %d\n", elevadorID); // Printa qual elevador
 
             auxInterno = strtok_r(NULL, "_", &saveInterno);
-            A = atoi(auxInterno);
-            printf("Esta no andar: %d\n", A); // Printa andar onde o elevador esta
+            elevadorAndar = atoi(auxInterno);
+            printf("Esta no andar: %d\n", elevadorAndar); // Printa andar onde o elevador esta
 
             auxInterno = strtok_r(NULL, "_", &saveInterno);
 
@@ -114,13 +104,26 @@ void leitor(char *_string, andar **andares, elevador **elevadores, gerenciador *
                 return;
             }
 
+
+            andar *andarElevador = NULL;
             auxInterno = strtok_r(NULL, ",", &saveInterno);
 
             while (auxInterno) {
-                createNo(noL, auxInterno);
+                int numAndar;
+
+                if (!strcmp(auxInterno, "T")) {
+                    numAndar = 1;
+                } else {
+                    numAndar = atoi(auxInterno);
+                }
+
+                createAndar(&andarElevador, numAndar, V);
                 auxInterno = strtok_r(NULL, ",", &saveInterno);
             }
-            list(*noL);
+
+
+            createElevador(elevadores, elevadorID, V, andarElevador);
+            inserirElevadorAndar(*elevadores, *andares, elevadorAndar, elevadorID);
             printf("\n\n");
 
         } else if (!strncmp(auxInterno, "T", 1) && *(auxInterno + 1) + 1) {
@@ -147,11 +150,8 @@ void leitor(char *_string, andar **andares, elevador **elevadores, gerenciador *
                 auxInterno = strtok_r(NULL, "_", &saveInterno);
 
                 createEventos(ge, T, createPessoa(A, auxInterno, V), atoi(auxInterno));
-
-                while (auxInterno) {
-                    auxInterno = strtok_r(NULL, "_", &saveInterno);
-                }
                 printf("\n\n");
+                auxInterno = NULL;
             }
         }
 
@@ -189,56 +189,42 @@ pessoa *createPessoa(int id, char *a, int direcao) {
     return novo;
 }
 
-
-void createNo(no **noC, char *valor) {
-    no *novo = malloc(sizeof(no));
+void createElevador(elevador **elevadores, int id, int direcao, andar *andaresElevador) {
+    elevador *novo = malloc(sizeof(elevador));
+    novo->id = id;
+    novo->direcao = direcao;
+    novo->andaresDestino = andaresElevador;
+    novo->andaresChamado = NULL;
+    novo->pessoasDentro = NULL;
+    novo->andarAtual = NULL;
     novo->prox = NULL;
-    novo->ant = NULL;
-    novo->andar = atoi(valor);
 
-    if (!*noC) {
-        *noC = novo;
+
+    if (!*elevadores) {
+        *elevadores = novo;
         return;
     } else {
-        no *aux2 = *noC;
-        if (aux2->andar > novo->andar) {
-            novo->prox = aux2;
-            aux2->ant = novo;
-            *noC = novo;
-        } else {
-            while (aux2->prox && novo->andar > (aux2->prox)->andar && aux2->prox->andar != novo->andar) {
-                aux2 = aux2->prox;
-            }
-            if (aux2->andar == novo->andar || (aux2->prox && aux2->prox->andar == novo->andar)) {
-                free(novo);
-                return;
-            }
-            if (!aux2->prox) {
-                novo->ant = aux2;
-                aux2->prox = novo;
-            } else {
-                novo->prox = aux2->prox;
-                novo->ant = aux2;
-                (aux2->prox)->ant = novo;
-                aux2->prox = novo;
-            }
+        elevador *aux = *elevadores;
+        while (aux->prox) {
+            aux = aux->prox;
         }
+        aux->prox = novo;
     }
 }
 
 
 
-void createAndar(andar **andares, int numAndar) {
+void createAndar(andar **andares, int numAndar, int condicao) {
     andar *novo = malloc(sizeof(andar));
     novo->prox = NULL;
     novo->ant = NULL;
     novo->pessoa = NULL;
     novo->andar = numAndar;
 
-    if (!*andares) {
+    if (!(*andares)) {
         *andares = novo;
         return;
-    } else {
+    } else if (condicao == 1) {
         andar *aux2 = *andares;
         if (aux2->andar > novo->andar) {
             novo->prox = aux2;
@@ -258,20 +244,29 @@ void createAndar(andar **andares, int numAndar) {
                 aux2->prox = novo;
             }
         }
+    } else {
+        andar *aux2 = *andares;
+        if (aux2->andar < novo->andar) {
+            novo->prox = aux2;
+            aux2->ant = novo;
+            *andares = novo;
+        } else {
+            while (aux2->prox && novo->andar < (aux2->prox)->andar) {
+                aux2 = aux2->prox;
+            }
+            if (!aux2->prox) {
+                novo->ant = aux2;
+                aux2->prox = novo;
+            } else {
+                novo->prox = aux2->prox;
+                novo->ant = aux2;
+                (aux2->prox)->ant = novo;
+                aux2->prox = novo;
+            }
+        }
     }
 }
 
-void list(no *noLT) {
-    printf("[ ");
-    while (noLT) {
-        printf("%d ", noLT->andar);
-        if (noLT->prox) {
-            printf("-> ");
-        }
-        noLT = noLT->prox;
-    }
-    printf("]");
-}
 
 int verificarDirecao(char *verif) {
     if (!strcmp(verif, "S")) {
@@ -283,11 +278,46 @@ int verificarDirecao(char *verif) {
     }
 }
 
-void finish(no **noF) {
-    no *aux = *noF;
-    while (*noF) {
-        aux = aux->prox;
-        free(*noF);
-        *noF = aux;
+void inserirElevadorAndar(elevador *elevadorP, andar *andares, int andar, int id) {
+    while (elevadorP->id != id) {
+        elevadorP = elevadorP->prox;
     }
+
+    while (andares->andar != andar) {
+        andares = andares->prox;
+    }
+
+    elevadorP->andarAtual = andares;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+//void finish(no **noF) {
+//    no *aux = *noF;
+//    while (*noF) {
+//        aux = aux->prox;
+//        free(*noF);
+//        *noF = aux;
+//    }
+//}
+
+//void list(no *noLT) {
+//    printf("[ ");
+//    while (noLT) {
+//        printf("%d ", noLT->andar);
+//        if (noLT->prox) {
+//            printf("-> ");
+//        }
+//        noLT = noLT->prox;
+//    }
+//    printf("]");
+//}
