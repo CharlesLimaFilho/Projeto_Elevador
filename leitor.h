@@ -47,6 +47,7 @@ pessoa *createPessoa(int id, char *a, int direcao);
 void createElevador(elevador **elevadores, int id, int direcao, andar *andaresElevador);
 void createNo(no **noC, char *valor);
 int verificarDirecao(char *);
+void printElevador(elevador *elevadorP);
 void list(no *noLT);
 void finish(no **noF);
 

@@ -10,6 +10,7 @@ int main() {
     gerenciador *gerente = NULL;
 
     leitor(teste, &andares, &elevadores, &gerente);
+    printElevador(elevadores);
 
     return 0;
 }

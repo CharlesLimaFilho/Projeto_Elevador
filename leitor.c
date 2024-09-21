@@ -13,6 +13,7 @@
  * T21_P10_S_T_13 T21_P11_S_T_12 T23_P12_S_T_15 T28_P13_S_2_13
  */
 
+int tempoGeral = 0;
 
 
 typedef struct pessoa1{
@@ -49,7 +50,6 @@ typedef struct eventos1 {
 } gerenciador;
 
 
-
 void leitor(char *, andar **, elevador **, gerenciador **ge);
 void createEventos(gerenciador **gerente, int tempo, pessoa *pessoaG, int andarG);
 void gerenciadorEventos();
@@ -58,6 +58,7 @@ void createAndar(andar **andares, int numAndar, int condicao);
 void createElevador(elevador **elevadores, int id, int direcao, andar *andaresElevador);
 int verificarDirecao(char *);
 void inserirElevadorAndar(elevador *elevadorP, andar *andares, int andar, int id);
+void printElevador(elevador *elevadorP);
 
 
 void leitor(char *_string, andar **andares, elevador **elevadores, gerenciador **ge) {
@@ -288,6 +289,28 @@ void inserirElevadorAndar(elevador *elevadorP, andar *andares, int andar, int id
     }
 
     elevadorP->andarAtual = andares;
+}
+
+void printElevador(elevador *elevadorP) {
+    printf("////////////////////////////////////////////////////////////\n");
+    while (elevadorP) {
+        printf("Elevador ID: %d\n", elevadorP->id);
+        printf("Andar Atual: %d\n", elevadorP->andarAtual->andar);
+        printf("Rota: ");
+
+        andar *auxAndar = elevadorP->andaresDestino;
+        while (auxAndar) {
+            printf("%d ", auxAndar->andar);
+            if (auxAndar->prox) {
+                printf("-> ");
+            }
+            auxAndar = auxAndar->prox;
+        }
+        printf("\n\n");
+        elevadorP = elevadorP->prox;
+
+    }
+    printf("////////////////////////////////////////////////////////////\n");
 }
 
 
