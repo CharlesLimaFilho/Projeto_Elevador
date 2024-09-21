@@ -165,6 +165,7 @@ void leitor(char *_string, andar **andares, elevador **elevadores, gerenciador *
                     numAndar = atoi(auxInterno);
                 }
 
+                auxInterno = strtok_r(NULL, "_", &saveInterno);
                 createEventos(ge, T, createPessoa(A, auxInterno, V), numAndar);
                 printf("\n\n");
                 auxInterno = NULL;
@@ -201,10 +202,10 @@ pessoa *createPessoa(int id, char *a, int direcao) {
 
     int numAndar;
 
-    if (!strcmp(a + 2, "T")) {
+    if (!strcmp(a, "T")) {
         numAndar = 1;
     } else {
-        numAndar = atoi(a + 2);
+        numAndar = atoi(a);
     }
 
     novo->andarD = numAndar;
@@ -245,6 +246,14 @@ void createAndar(andar **andares, int numAndar, int condicao) {
     novo->pessoaSubindo = NULL;
     novo->pessoaDescendo = NULL;
     novo->andar = numAndar;
+
+    andar *aux = *andares;
+    while (aux) {
+        if (numAndar == aux->andar) {
+            return;
+        }
+        aux = aux->prox;
+    }
 
     if (!(*andares)) {
         *andares = novo;
@@ -316,7 +325,6 @@ void inserirElevadorAndar(elevador *elevadorP, andar *andares, int andar, int id
 }
 
 
-// Conrado da muito e o rabo
 // Move o elevadaor, inverte o sentido se necessario e troca as listas
 
 void moveElevadores(elevador *elevadorMove) {
@@ -392,7 +400,7 @@ void inserirPessoasAndar(andar *andarInserir, pessoa *pessoaInserir) { // Já in
             pessoaInserir->ant = aux;
             aux->prox = pessoaInserir;
         }
-    } else if (andarInserir->pessoaDescendo && pessoaInserir->andarD == -1) {
+    } else if (andarInserir->pessoaDescendo && pessoaInserir->direcao == -1) {
         pessoa *aux = andarInserir->pessoaDescendo;
         if (pessoaInserir->andarD > aux->andarD) {
             pessoaInserir->prox = aux;
@@ -425,26 +433,30 @@ void inserirPessoasElevador(elevador *elevadorAndar) {
             pessoa *pessoasElevador = elevadorAndar->pessoasDentro;
 
             if (!pessoasElevador) {
+                createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaDescendo->andarD, elevadorAndar->direcao);
                 elevadorAndar->pessoasDentro = andarAtualElevador->pessoaSubindo;
                 andarAtualElevador->pessoaSubindo = andarAtualElevador->pessoaSubindo->prox;
                 elevadorAndar->pessoasDentro->prox = NULL;
             } else {
                 if (pessoasElevador->andarD > andarAtualElevador->pessoaSubindo->andarD) {
-                    andarAtualElevador->pessoaSubindo->prox = pessoasElevador;
-                    andarAtualElevador->pessoaSubindo->ant = NULL;
+                    createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaDescendo->andarD, elevadorAndar->direcao);
                     pessoasElevador->ant = andarAtualElevador->pessoaSubindo;
                     andarAtualElevador->pessoaSubindo = andarAtualElevador->pessoaSubindo->prox;
+                    pessoasElevador->ant->prox = pessoasElevador;
+                    elevadorAndar->pessoasDentro = pessoasElevador->ant;
                 } else {
                     while (pessoasElevador->prox && andarAtualElevador->pessoaSubindo->andarD > pessoasElevador->prox->andarD) {
                         pessoasElevador = pessoasElevador->prox;
                     }
                     if (pessoasElevador->prox) {
+                        createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaDescendo->andarD, elevadorAndar->direcao);
                         andarAtualElevador->pessoaSubindo->ant = pessoasElevador;
                         pessoasElevador->prox->ant = andarAtualElevador->pessoaSubindo;
                         andarAtualElevador->pessoaSubindo = andarAtualElevador->pessoaSubindo->prox;
                         pessoasElevador->prox->ant->prox = pessoasElevador->prox;
                         pessoasElevador->prox = pessoasElevador->prox->ant;
                     } else {
+                        createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaDescendo->andarD, elevadorAndar->direcao);
                         andarAtualElevador->pessoaSubindo->ant = pessoasElevador;
                         pessoasElevador->prox = andarAtualElevador->pessoaSubindo;
                         andarAtualElevador->pessoaSubindo = andarAtualElevador->pessoaSubindo->prox;
@@ -452,6 +464,7 @@ void inserirPessoasElevador(elevador *elevadorAndar) {
                     }
                 }
             }
+            //createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaSubindo->andarD, elevadorAndar->direcao);
         }
 
     } else { // Decrescente
@@ -459,26 +472,30 @@ void inserirPessoasElevador(elevador *elevadorAndar) {
             andar *andarAtualElevador = elevadorAndar->andarAtual;
             pessoa *pessoasElevador = elevadorAndar->pessoasDentro;
             if (!pessoasElevador) {
+                createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaDescendo->andarD, elevadorAndar->direcao);
                 elevadorAndar->pessoasDentro = andarAtualElevador->pessoaDescendo;
                 andarAtualElevador->pessoaDescendo = andarAtualElevador->pessoaDescendo->prox;
                 elevadorAndar->pessoasDentro->prox = NULL;
-            } else {
+            } else {////////////
                 if (pessoasElevador->andarD < andarAtualElevador->pessoaDescendo->andarD) {
-                    andarAtualElevador->pessoaDescendo->prox = pessoasElevador;
-                    andarAtualElevador->pessoaDescendo->ant = NULL;
+                    createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaDescendo->andarD, elevadorAndar->direcao);
                     pessoasElevador->ant = andarAtualElevador->pessoaDescendo;
                     andarAtualElevador->pessoaDescendo = andarAtualElevador->pessoaDescendo->prox;
+                    pessoasElevador->ant->prox = pessoasElevador;
+                    elevadorAndar->pessoasDentro = pessoasElevador->ant;
                 } else {
                     while (pessoasElevador->prox && andarAtualElevador->pessoaDescendo->andarD < pessoasElevador->prox->andarD) {
                         pessoasElevador = pessoasElevador->prox;
                     }
                     if (pessoasElevador->prox) {
+                        createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaDescendo->andarD, elevadorAndar->direcao);
                         andarAtualElevador->pessoaDescendo->ant = pessoasElevador;
                         pessoasElevador->prox->ant = andarAtualElevador->pessoaDescendo;
                         andarAtualElevador->pessoaDescendo = andarAtualElevador->pessoaDescendo->prox;
                         pessoasElevador->prox->ant->prox = pessoasElevador->prox;
                         pessoasElevador->prox = pessoasElevador->prox->ant;
                     } else {
+                        createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaDescendo->andarD, elevadorAndar->direcao);
                         andarAtualElevador->pessoaDescendo->ant = pessoasElevador;
                         pessoasElevador->prox = andarAtualElevador->pessoaDescendo;
                         andarAtualElevador->pessoaDescendo = andarAtualElevador->pessoaDescendo->prox;
@@ -551,6 +568,15 @@ void printElevador(elevador *elevadorP) {
         printf("Rota: ");
 
         andar *auxAndar = elevadorP->andaresDestino;
+        while (auxAndar) {
+            printf("%d ", auxAndar->andar);
+            if (auxAndar->prox) {
+                printf("-> ");
+            }
+            auxAndar = auxAndar->prox;
+        }
+
+        auxAndar = elevadorP->andaresChamado;
         while (auxAndar) {
             printf("%d ", auxAndar->andar);
             if (auxAndar->prox) {
