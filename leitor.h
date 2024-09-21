@@ -1,12 +1,6 @@
 #ifndef LEITOR_H
 #define LEITOR_H
 
-typedef struct no{
-    int andar;
-    struct no *prox;
-    struct no *ant;
-}no;
-
 typedef struct pessoa{
     int id;
     int andarD;
@@ -18,7 +12,8 @@ typedef struct andar{
     int andar;
     struct andar *prox;
     struct andar *ant;
-    pessoa *pessoa;
+    pessoa *pessoaSubindo;
+    pessoa *pessoaDescendo;
 }andar;
 
 
@@ -44,11 +39,13 @@ void leitor(char *_string, andar **andares, elevador **elevadores, gerenciador *
 void createEventos(gerenciador **gerente, int tempo, pessoa *pessoaG, int andarG);
 void createAndar(andar **andares, int numAndar, int condicao);
 pessoa *createPessoa(int id, char *a, int direcao);
+void moveElevadores(elevador *elevadorMove);
 void createElevador(elevador **elevadores, int id, int direcao, andar *andaresElevador);
-void createNo(no **noC, char *valor);
+void inserirPessoasAndar(andar *andarInserir, pessoa *pessoaInserir);
 int verificarDirecao(char *);
 void printElevador(elevador *elevadorP);
-void list(no *noLT);
-void finish(no **noF);
+void gerenciarEventos(andar *andarGerenciar, gerenciador **gerencia);
+
+void atualizarTempo();
 
 #endif
