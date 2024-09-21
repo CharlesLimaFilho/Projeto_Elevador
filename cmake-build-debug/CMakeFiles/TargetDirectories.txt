@@ -1,0 +1,3 @@
+C:/Dev/repos/git/CLion/data-structure/Trabalho/Projeto_Elevador/cmake-build-debug/CMakeFiles/Trabalho.dir
+C:/Dev/repos/git/CLion/data-structure/Trabalho/Projeto_Elevador/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Dev/repos/git/CLion/data-structure/Trabalho/Projeto_Elevador/cmake-build-debug/CMakeFiles/rebuild_cache.dir
