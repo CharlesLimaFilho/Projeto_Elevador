@@ -45,6 +45,8 @@ void inserirPessoasAndar(andar *andarInserir, pessoa *pessoaInserir);
 int verificarDirecao(char *);
 void printElevador(elevador *elevadorP);
 void gerenciarEventos(andar *andarGerenciar, gerenciador **gerencia);
+void removerPessoasElevador(elevador *elevadorGerenciar);
+void inserirPessoasElevador(elevador *elevadorAndar);
 
 void atualizarTempo();
 

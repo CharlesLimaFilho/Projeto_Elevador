@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 // Programa que realiza a leitura da string de eventos
 
 /* AM_25
@@ -34,7 +35,7 @@ typedef struct andar1{
 
 
 typedef struct elevador1{
-    int direcao;// -1 - Descendo, 0 - Parado, 1 - Subindo
+    int direcao;// -1 - Descendo, 1 - Subindo
     int id;
     pessoa *pessoasDentro;
     andar *andarAtual;
@@ -61,6 +62,8 @@ int verificarDirecao(char *);
 void moveElevadores(elevador *elevadorMove);
 void inserirElevadorAndar(elevador *elevadorP, andar *andares, int andar, int id);
 void inserirPessoasAndar(andar *andarInserir, pessoa *pessoaInserir);
+void removerPessoasElevador(elevador *elevadorGerenciar);
+void inserirPessoasElevador(elevador *elevadorAndar);
 void printElevador(elevador *elevadorP);
 
 void atualizarTempo();
@@ -188,7 +191,6 @@ void createEventos(gerenciador **gerente, int tempo, pessoa *pessoaG, int andarG
         }
         aux->prox = novo;
     }
-    return;
 }
 
 pessoa *createPessoa(int id, char *a, int direcao) {
@@ -315,6 +317,8 @@ void inserirElevadorAndar(elevador *elevadorP, andar *andares, int andar, int id
 
 
 // Conrado da muito e o rabo
+// Move o elevadaor, inverte o sentido se necessario e troca as listas
+
 void moveElevadores(elevador *elevadorMove) {
     while (elevadorMove) {
         if (elevadorMove->andaresChamado || elevadorMove->andaresDestino) {
@@ -323,6 +327,17 @@ void moveElevadores(elevador *elevadorMove) {
             }
             if (elevadorMove->direcao == -1 && elevadorMove->andarAtual->ant) {
                 elevadorMove->andarAtual = elevadorMove->andarAtual->ant;
+            }
+        }
+        if (elevadorMove->andaresChamado && !elevadorMove->andaresDestino) {
+            if (elevadorMove->direcao == 1) {
+                elevadorMove->direcao = -1;
+                elevadorMove->andaresDestino = elevadorMove->andaresChamado;
+                elevadorMove->andaresChamado = NULL;
+            } else {
+                elevadorMove->direcao = 1;
+                elevadorMove->andaresDestino = elevadorMove->andaresChamado;
+                elevadorMove->andaresChamado = NULL;
             }
         }
         elevadorMove = elevadorMove->prox;
@@ -346,7 +361,7 @@ void gerenciarEventos(andar *andarGerenciar, gerenciador **gerencia) {
     }
 }
 
-void inserirPessoasAndar(andar *andarInserir, pessoa *pessoaInserir) {
+void inserirPessoasAndar(andar *andarInserir, pessoa *pessoaInserir) { // Já inseri ordenado as pessoas nos andares
     if (!andarInserir->pessoaSubindo && pessoaInserir->direcao == 1) {
         andarInserir->pessoaSubindo = pessoaInserir;
         pessoaInserir->prox = NULL;
@@ -401,20 +416,127 @@ void inserirPessoasAndar(andar *andarInserir, pessoa *pessoaInserir) {
 }
 
 
-void gerenciarPessoasElevador(elevador *elevadorGerenciar) {
-    pessoa *aux = elevadorGerenciar->pessoasDentro;
-    if (elevadorGerenciar->andaresDestino->andar == elevadorGerenciar->andarAtual->andar) {
-        while (aux) { // Remocao de pessoas
-            if (aux->andarD == elevadorGerenciar->andarAtual->andar) {
-                elevadorGerenciar->pessoasDentro = elevadorGerenciar->pessoasDentro->prox;
-                free(aux);
-                aux = elevadorGerenciar->pessoasDentro;
+// Fé em Deus q a casa vai
+void inserirPessoasElevador(elevador *elevadorAndar) {
+
+    if (elevadorAndar->direcao == 1) { // Crescente
+        while (elevadorAndar->andarAtual->pessoaSubindo) {
+            andar *andarAtualElevador = elevadorAndar->andarAtual;
+            pessoa *pessoasElevador = elevadorAndar->pessoasDentro;
+
+            if (!pessoasElevador) {
+                elevadorAndar->pessoasDentro = andarAtualElevador->pessoaSubindo;
+                andarAtualElevador->pessoaSubindo = andarAtualElevador->pessoaSubindo->prox;
+                elevadorAndar->pessoasDentro->prox = NULL;
             } else {
-                aux = aux->prox;
+                if (pessoasElevador->andarD > andarAtualElevador->pessoaSubindo->andarD) {
+                    andarAtualElevador->pessoaSubindo->prox = pessoasElevador;
+                    andarAtualElevador->pessoaSubindo->ant = NULL;
+                    pessoasElevador->ant = andarAtualElevador->pessoaSubindo;
+                    andarAtualElevador->pessoaSubindo = andarAtualElevador->pessoaSubindo->prox;
+                } else {
+                    while (pessoasElevador->prox && andarAtualElevador->pessoaSubindo->andarD > pessoasElevador->prox->andarD) {
+                        pessoasElevador = pessoasElevador->prox;
+                    }
+                    if (pessoasElevador->prox) {
+                        andarAtualElevador->pessoaSubindo->ant = pessoasElevador;
+                        pessoasElevador->prox->ant = andarAtualElevador->pessoaSubindo;
+                        andarAtualElevador->pessoaSubindo = andarAtualElevador->pessoaSubindo->prox;
+                        pessoasElevador->prox->ant->prox = pessoasElevador->prox;
+                        pessoasElevador->prox = pessoasElevador->prox->ant;
+                    } else {
+                        andarAtualElevador->pessoaSubindo->ant = pessoasElevador;
+                        pessoasElevador->prox = andarAtualElevador->pessoaSubindo;
+                        andarAtualElevador->pessoaSubindo = andarAtualElevador->pessoaSubindo->prox;
+                        pessoasElevador->prox->prox = NULL;
+                    }
+                }
+            }
+        }
+
+    } else { // Decrescente
+        while (elevadorAndar->andarAtual->pessoaDescendo) {
+            andar *andarAtualElevador = elevadorAndar->andarAtual;
+            pessoa *pessoasElevador = elevadorAndar->pessoasDentro;
+            if (!pessoasElevador) {
+                elevadorAndar->pessoasDentro = andarAtualElevador->pessoaDescendo;
+                andarAtualElevador->pessoaDescendo = andarAtualElevador->pessoaDescendo->prox;
+                elevadorAndar->pessoasDentro->prox = NULL;
+            } else {
+                if (pessoasElevador->andarD < andarAtualElevador->pessoaDescendo->andarD) {
+                    andarAtualElevador->pessoaDescendo->prox = pessoasElevador;
+                    andarAtualElevador->pessoaDescendo->ant = NULL;
+                    pessoasElevador->ant = andarAtualElevador->pessoaDescendo;
+                    andarAtualElevador->pessoaDescendo = andarAtualElevador->pessoaDescendo->prox;
+                } else {
+                    while (pessoasElevador->prox && andarAtualElevador->pessoaDescendo->andarD < pessoasElevador->prox->andarD) {
+                        pessoasElevador = pessoasElevador->prox;
+                    }
+                    if (pessoasElevador->prox) {
+                        andarAtualElevador->pessoaDescendo->ant = pessoasElevador;
+                        pessoasElevador->prox->ant = andarAtualElevador->pessoaDescendo;
+                        andarAtualElevador->pessoaDescendo = andarAtualElevador->pessoaDescendo->prox;
+                        pessoasElevador->prox->ant->prox = pessoasElevador->prox;
+                        pessoasElevador->prox = pessoasElevador->prox->ant;
+                    } else {
+                        andarAtualElevador->pessoaDescendo->ant = pessoasElevador;
+                        pessoasElevador->prox = andarAtualElevador->pessoaDescendo;
+                        andarAtualElevador->pessoaDescendo = andarAtualElevador->pessoaDescendo->prox;
+                        pessoasElevador->prox->prox = NULL;
+                    }
+                }
             }
         }
     }
 }
+
+
+
+void removerPessoasElevador(elevador *elevadorGerenciar) {
+
+    while (elevadorGerenciar) {
+        andar *auxAndar = elevadorGerenciar->andaresDestino;
+        pessoa *aux = elevadorGerenciar->pessoasDentro;
+        if (elevadorGerenciar->andaresDestino && elevadorGerenciar->andaresDestino->andar == elevadorGerenciar->andarAtual->andar) {
+            while (aux) { // Remocao de destinos
+                if (aux->andarD == elevadorGerenciar->andarAtual->andar) {
+                    elevadorGerenciar->pessoasDentro = elevadorGerenciar->pessoasDentro->prox;
+                    free(aux);
+                    aux = elevadorGerenciar->pessoasDentro;
+                } else {
+                    aux = aux->prox;
+                }
+            }
+            elevadorGerenciar->andaresDestino = elevadorGerenciar->andaresDestino->prox;
+            free(auxAndar);
+        }
+        elevadorGerenciar = elevadorGerenciar->prox;
+    }
+}
+
+void verificarChamadas(andar *andaresChamados, elevador *elevadoresChamados) {
+    while (andaresChamados) {
+        if (andaresChamados->pessoaSubindo || andaresChamados->pessoaDescendo) {
+
+        }
+        andaresChamados = andaresChamados->prox;
+    }
+}
+
+
+void chamar(andar *andarChamador, elevador *elevadores) {
+    elevador *chamado = NULL;
+
+    while (elevadores) {
+        if (andarChamador->pessoaSubindo && elevadores->direcao == 1) {
+
+        }
+    }
+}
+
+
+
+
 
 
 
@@ -449,7 +571,6 @@ void printElevador(elevador *elevadorP) {
 
 // AREA DE TESTES
 void atualizarTempo() {
-    printf("Tempo Geral: %d\n", tempoGeral);
     tempoGeral++;
 }
 
