@@ -3,22 +3,15 @@
 #include <unistd.h>
 
 int main() {
-    char teste[] = "AM_25 E1_25_D_6,9,4 T01_P01_D_24_20 T01_P04_D_24_14 T01_P05_D_24_T T01_P06_S_24_25 T02_P02_D_21_13";
+    char teste[] = "AM_25 E1_25_D_6,9,4 T5_P01_S_4_6 T8_P01_D_6_4 T9_P02_S_5_10 T10_P03_S_3_9 "
+                   "T10_P04_D_6_T T10_P05_S_8_15 T15_P06_D_9_2 T15_P07_S_2_13 T18_P08_D_8_T "
+                   "T21_P01_D_16_3 T21_P10_S_T_13 T21_P11_S_T_12 T23_P12_S_T_15 T28_P13_S_2_13";
     andar *andares = NULL;
     elevador *elevadores = NULL;
     gerenciador *gerente = NULL;
 
     leitor(teste, &andares, &elevadores, &gerente);
-
-    for (int i = 0; i < 30; i++) {
-        gerenciarEventos(andares, &gerente);
-        inserirPessoasElevador(elevadores);
-        removerPessoasElevador(elevadores);
-        printElevador(elevadores);
-        moveElevadores(elevadores);
-        atualizarTempo();
-        //sleep(1);
-    }
+    ativar(andares, elevadores, gerente);
 
 
     return 0;

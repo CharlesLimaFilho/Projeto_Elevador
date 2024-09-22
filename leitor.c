@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <unistd.h>
 
 // Programa que realiza a leitura da string de eventos
 
@@ -41,6 +41,7 @@ typedef struct elevador1{
     andar *andarAtual;
     andar *andaresDestino;
     andar *andaresChamado;
+    andar *andarReserva;
     struct elevador1 *prox;
 }elevador;
 
@@ -65,8 +66,11 @@ void inserirPessoasAndar(andar *andarInserir, pessoa *pessoaInserir);
 void removerPessoasElevador(elevador *elevadorGerenciar);
 void inserirPessoasElevador(elevador *elevadorAndar);
 void printElevador(elevador *elevadorP);
+void chamar(andar *andarChamador, elevador *elevadores);
+
 
 void atualizarTempo();
+void ativar(andar *andares, elevador *elevadores, gerenciador *gerente);
 
 void leitor(char *_string, andar **andares, elevador **elevadores, gerenciador **ge) {
     char *auxExterno;
@@ -94,23 +98,13 @@ void leitor(char *_string, andar **andares, elevador **elevadores, gerenciador *
             }
         } else if (!strncmp(auxInterno, "E", 1)) {
             elevadorID = atoi(auxInterno + 1);
-            printf("Elevador: %d\n", elevadorID); // Printa qual elevador
 
             auxInterno = strtok_r(NULL, "_", &saveInterno);
             elevadorAndar = atoi(auxInterno);
-            printf("Esta no andar: %d\n", elevadorAndar); // Printa andar onde o elevador esta
 
             auxInterno = strtok_r(NULL, "_", &saveInterno);
 
             V = verificarDirecao(auxInterno);
-            if (V == 1) {
-                printf("Subindo\n");
-            } else if (V == -1) {
-                printf("Descendo\n");
-            } else {
-                printf("Erro: Direcao do elevador invalida\n\n");
-                return;
-            }
 
 
             andar *andarElevador = NULL;
@@ -136,25 +130,15 @@ void leitor(char *_string, andar **andares, elevador **elevadores, gerenciador *
 
         } else if (!strncmp(auxInterno, "T", 1) && *(auxInterno + 1) + 1) {
             T = atoi(auxInterno + 1);
-            printf("No tempo %d:\n", T);
 
             while (auxInterno) {
                 auxInterno = strtok_r(NULL, "_", &saveInterno);
                 if (!strncmp(auxInterno, "P", 1)) {
                     A = atoi(auxInterno + 1);
-                    printf("Pessoa %d:\n", A);
                     auxInterno = strtok_r(NULL, "_", &saveInterno);
                 }
 
                 V = verificarDirecao(auxInterno);
-                if (V == 1) {
-                    printf("Subindo\n");
-                } else if (V == -1) {
-                    printf("Descendo\n");
-                } else {
-                    printf("Erro: Direcao invalida\n\n");
-                    return;
-                }
                 auxInterno = strtok_r(NULL, "_", &saveInterno);
 
                 int numAndar;
@@ -339,7 +323,7 @@ void moveElevadores(elevador *elevadorMove) {
         }
         if (elevadorMove->andaresChamado && !elevadorMove->andaresDestino) {
             if (elevadorMove->direcao == 1) {
-                elevadorMove->direcao = -1;
+                elevadorMove->direcao = 0;
                 elevadorMove->andaresDestino = elevadorMove->andaresChamado;
                 elevadorMove->andaresChamado = NULL;
             } else {
@@ -424,7 +408,6 @@ void inserirPessoasAndar(andar *andarInserir, pessoa *pessoaInserir) { // Já in
 }
 
 
-// Fé em Deus q a casa vai
 void inserirPessoasElevador(elevador *elevadorAndar) {
 
     if (elevadorAndar->direcao == 1) { // Crescente
@@ -433,13 +416,13 @@ void inserirPessoasElevador(elevador *elevadorAndar) {
             pessoa *pessoasElevador = elevadorAndar->pessoasDentro;
 
             if (!pessoasElevador) {
-                createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaDescendo->andarD, elevadorAndar->direcao);
+                createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaSubindo->andarD, elevadorAndar->direcao);
                 elevadorAndar->pessoasDentro = andarAtualElevador->pessoaSubindo;
                 andarAtualElevador->pessoaSubindo = andarAtualElevador->pessoaSubindo->prox;
                 elevadorAndar->pessoasDentro->prox = NULL;
             } else {
                 if (pessoasElevador->andarD > andarAtualElevador->pessoaSubindo->andarD) {
-                    createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaDescendo->andarD, elevadorAndar->direcao);
+                    createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaSubindo->andarD, elevadorAndar->direcao);
                     pessoasElevador->ant = andarAtualElevador->pessoaSubindo;
                     andarAtualElevador->pessoaSubindo = andarAtualElevador->pessoaSubindo->prox;
                     pessoasElevador->ant->prox = pessoasElevador;
@@ -449,14 +432,14 @@ void inserirPessoasElevador(elevador *elevadorAndar) {
                         pessoasElevador = pessoasElevador->prox;
                     }
                     if (pessoasElevador->prox) {
-                        createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaDescendo->andarD, elevadorAndar->direcao);
+                        createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaSubindo->andarD, elevadorAndar->direcao);
                         andarAtualElevador->pessoaSubindo->ant = pessoasElevador;
                         pessoasElevador->prox->ant = andarAtualElevador->pessoaSubindo;
                         andarAtualElevador->pessoaSubindo = andarAtualElevador->pessoaSubindo->prox;
                         pessoasElevador->prox->ant->prox = pessoasElevador->prox;
                         pessoasElevador->prox = pessoasElevador->prox->ant;
                     } else {
-                        createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaDescendo->andarD, elevadorAndar->direcao);
+                        createAndar(&elevadorAndar->andaresDestino, andarAtualElevador->pessoaSubindo->andarD, elevadorAndar->direcao);
                         andarAtualElevador->pessoaSubindo->ant = pessoasElevador;
                         pessoasElevador->prox = andarAtualElevador->pessoaSubindo;
                         andarAtualElevador->pessoaSubindo = andarAtualElevador->pessoaSubindo->prox;
@@ -531,23 +514,27 @@ void removerPessoasElevador(elevador *elevadorGerenciar) {
     }
 }
 
-void verificarChamadas(andar *andaresChamados, elevador *elevadoresChamados) {
-    while (andaresChamados) {
-        if (andaresChamados->pessoaSubindo || andaresChamados->pessoaDescendo) {
-
-        }
-        andaresChamados = andaresChamados->prox;
-    }
-}
+//void verificarChamadas(andar *andaresChamados, elevador *elevadoresChamados) {
+//    while (andaresChamados) {
+//        if (andaresChamados->pessoaSubindo || andaresChamados->pessoaDescendo) {
+//
+//        }
+//        andaresChamados = andaresChamados->prox;
+//    }
+//}
 
 
 void chamar(andar *andarChamador, elevador *elevadores) {
-    elevador *chamado = NULL;
 
-    while (elevadores) {
-        if (andarChamador->pessoaSubindo && elevadores->direcao == 1) {
-
+    while (andarChamador) {
+        if (andarChamador->pessoaSubindo && elevadores->direcao != 1) {
+            createAndar(&elevadores->andaresChamado, andarChamador->andar, -1);
+        } else if (andarChamador->pessoaDescendo && elevadores->direcao == 1) {
+            createAndar(&elevadores->andaresChamado, andarChamador->andar, 1);
+        } else {
+            createAndar(&elevadores->andarReserva, andarChamador->andar, elevadores->direcao);
         }
+        andarChamador = andarChamador->prox;
     }
 }
 
@@ -577,6 +564,7 @@ void printElevador(elevador *elevadorP) {
         }
 
         auxAndar = elevadorP->andaresChamado;
+        printf("\nChamado: ");
         while (auxAndar) {
             printf("%d ", auxAndar->andar);
             if (auxAndar->prox) {
@@ -601,27 +589,15 @@ void atualizarTempo() {
 }
 
 
-
-
-
-
-//void finish(no **noF) {
-//    no *aux = *noF;
-//    while (*noF) {
-//        aux = aux->prox;
-//        free(*noF);
-//        *noF = aux;
-//    }
-//}
-
-//void list(no *noLT) {
-//    printf("[ ");
-//    while (noLT) {
-//        printf("%d ", noLT->andar);
-//        if (noLT->prox) {
-//            printf("-> ");
-//        }
-//        noLT = noLT->prox;
-//    }
-//    printf("]");
-//}
+void ativar(andar *andares, elevador *elevadores, gerenciador *gerente) {
+    while (elevadores->andaresDestino || elevadores->andaresChamado || gerente) {
+        gerenciarEventos(andares, &gerente);
+        inserirPessoasElevador(elevadores);
+        removerPessoasElevador(elevadores);
+        chamar(andares, elevadores);
+        printElevador(elevadores);
+        moveElevadores(elevadores);
+        atualizarTempo();
+        sleep(1);
+    }
+}

@@ -24,6 +24,7 @@ typedef struct elevador{
     andar *andarAtual;
     andar *andaresDestino;
     andar *andaresChamado;
+    andar *andarReserva;
     struct elevador *prox;
 }elevador;
 
@@ -49,5 +50,6 @@ void removerPessoasElevador(elevador *elevadorGerenciar);
 void inserirPessoasElevador(elevador *elevadorAndar);
 
 void atualizarTempo();
+void ativar(andar *andares, elevador *elevadores, gerenciador *gerente);
 
 #endif
