@@ -321,7 +321,7 @@ void moveElevadores(elevador *elevadorMove) {
                 elevadorMove->andarAtual = elevadorMove->andarAtual->ant;
             }
         }
-        if (elevadorMove->andaresChamado && !elevadorMove->andaresDestino) {
+        if (elevadorMove->andaresChamado && !elevadorMove->andaresDestino || !elevadorMove->andarAtual->prox) {
             if (elevadorMove->direcao == 1) {
                 elevadorMove->direcao = 0;
                 elevadorMove->andaresDestino = elevadorMove->andaresChamado;
