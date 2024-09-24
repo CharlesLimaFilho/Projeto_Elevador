@@ -314,27 +314,45 @@ void inserirElevadorAndar(elevador *elevadorP, andar *andares, int andar, int id
 void moveElevadores(elevador *elevadorMove) {
     while (elevadorMove) {
         if (elevadorMove->andaresChamado || elevadorMove->andaresDestino) {
-            if (elevadorMove->direcao == 1 && elevadorMove->andarAtual->prox) {
-                elevadorMove->andarAtual = elevadorMove->andarAtual->prox;
-            }
-            if (elevadorMove->direcao == -1 && elevadorMove->andarAtual->ant) {
-                elevadorMove->andarAtual = elevadorMove->andarAtual->ant;
-            }
-        }
-        if (elevadorMove->andaresChamado && !elevadorMove->andaresDestino || !elevadorMove->andarAtual->prox) {
+
             if (elevadorMove->direcao == 1) {
-                elevadorMove->direcao = 0;
-                elevadorMove->andaresDestino = elevadorMove->andaresChamado;
-                elevadorMove->andaresChamado = NULL;
-            } else {
+                if (elevadorMove->andarAtual->prox) {
+                    elevadorMove->andarAtual = elevadorMove->andarAtual->prox;
+                }
+
+                if (elevadorMove->andarAtual->andar == 25) {
+                    elevadorMove->direcao = -1;
+                }
+            }
+
+            if (elevadorMove->direcao == -1) {
+                if (elevadorMove->andarAtual->ant) {
+                    elevadorMove->andarAtual = elevadorMove->andarAtual->ant;
+                }
+
+                if (elevadorMove->andarAtual->andar == 1) {
+                    elevadorMove->direcao = 1;
+                }
+            }
+
+            if (!elevadorMove->andaresChamado && elevadorMove->andaresDestino && !elevadorMove->andarAtual->prox) {
+                elevadorMove->direcao = -1;
+            }
+
+            if (!elevadorMove->andaresChamado && elevadorMove->andaresDestino && !elevadorMove->andarAtual->ant) {
                 elevadorMove->direcao = 1;
-                elevadorMove->andaresDestino = elevadorMove->andaresChamado;
-                elevadorMove->andaresChamado = NULL;
             }
         }
+
+        if (!elevadorMove->andaresDestino) {
+            elevadorMove->andaresDestino = elevadorMove->andaresChamado;
+            elevadorMove->andaresChamado = NULL;
+        }
+
         elevadorMove = elevadorMove->prox;
     }
 }
+
 
 void gerenciarEventos(andar *andarGerenciar, gerenciador **gerencia) {
     gerenciador *aux = *gerencia;
@@ -532,7 +550,7 @@ void chamar(andar *andarChamador, elevador *elevadores) {
         } else if (andarChamador->pessoaDescendo && elevadores->direcao == 1) {
             createAndar(&elevadores->andaresChamado, andarChamador->andar, 1);
         } else {
-            createAndar(&elevadores->andarReserva, andarChamador->andar, elevadores->direcao);
+            createAndar(&elevadores->andarAtual, andarChamador->andar, elevadores->direcao);
         }
         andarChamador = andarChamador->prox;
     }
@@ -587,7 +605,6 @@ void printElevador(elevador *elevadorP) {
 void atualizarTempo() {
     tempoGeral++;
 }
-
 
 void ativar(andar *andares, elevador *elevadores, gerenciador *gerente) {
     while (elevadores->andaresDestino || elevadores->andaresChamado || gerente) {
