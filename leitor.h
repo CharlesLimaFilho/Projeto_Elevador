@@ -1,11 +1,13 @@
 #ifndef LEITOR_H
 #define LEITOR_H
 
-typedef struct pessoa{
+typedef struct pessoa1{
     int id;
     int andarD;
-    struct pessoa *prox;
-    struct pessoa *ant;
+    int direcao;
+    int chamou; // 1 - Sim, 0 - Nao
+    struct pessoa1 *prox;
+    struct pessoa1 *ant;
 }pessoa;
 
 typedef struct andar{
@@ -20,6 +22,7 @@ typedef struct andar{
 typedef struct elevador{
     int direcao;// -1 - Descendo, 0 - Parado, 1 - Subindo
     int id;
+    int moves;
     pessoa *pessoasDentro;
     andar *andarAtual;
     andar *andaresDestino;

@@ -1,6 +1,7 @@
 # ninja log v5
-2	183	7486718281977215	CMakeFiles/Trabalho.dir/leitor.c.obj	99ccbc612ca16c94
-2	101	7486686746532317	CMakeFiles/Trabalho.dir/aplication.c.obj	388b0047e6e8b90
-184	344	7486718283477109	Trabalho.exe	abc62bbbfa4044f0
-2	108	7486718568696935	CMakeFiles/Trabalho.dir/leitor.c.obj	99ccbc612ca16c94
-109	202	7486718569593660	Trabalho.exe	abc62bbbfa4044f0
+2	120	7489711306260053	CMakeFiles/Trabalho.dir/leitor.c.obj	99ccbc612ca16c94
+120	225	7489711307274396	Trabalho.exe	abc62bbbfa4044f0
+14	142	7489676919367637	CMakeFiles/Trabalho.dir/aplication.c.obj	388b0047e6e8b90
+3	96	7489712054916686	CMakeFiles/Trabalho.dir/aplication.c.obj	388b0047e6e8b90
+8	135	7489712055338744	CMakeFiles/Trabalho.dir/leitor.c.obj	99ccbc612ca16c94
+135	229	7489712056228748	Trabalho.exe	abc62bbbfa4044f0
